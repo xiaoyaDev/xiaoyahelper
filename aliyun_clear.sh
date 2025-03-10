@@ -602,7 +602,7 @@ copy_tvbox_files'
 
 docker_pull() {
     repo_tag="$1"
-    mirrors="$(curl --insecure -fsSL https://ddsrem.com/xiaoya/all_in_one.sh | awk '/mirrors=\(/,/\)/' | sed -n 's/^[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' | grep -v "docker\.io" | grep -v "hub\.rat\.dev")"
+    mirrors="$(curl --insecure -fsSL https://ddsrem.com/xiaoya/all_in_one.sh | awk '/mirrors=\(/,/\)/' | sed -n 's/^[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' | grep -v "docker\.io" | grep -v "hub\.rat\.dev" | grep -v "docker\.1ms\.run")"
     mirrors="$(
         for line in $mirrors; do
             curl -s -o /dev/null -m 4 -w '%{time_total} '$line'\n' --head --request GET "$line" &
