@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202503020843"
+ver="202505240847"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -639,8 +639,10 @@ update_xiaoya() {
     if [ "$(get_docker_info $XIAOYA_NAME | grep "ailg/alist")"x != x ]; then
         tag="test"
     fi
+    mode="bridge"
     if [ "$para_n"x != x ]; then
         tag="hostmode"
+        mode="host"
     fi
     para_p="$(docker inspect --format='{{range $p, $conf := .NetworkSettings.Ports}}~{{$p}}{{$conf}} {{end}}' $XIAOYA_NAME | tr '~' '\n' | tr '/' ' ' | tr -d '[]{}' | awk '{printf("-p %s:%s\n",$3,$1)}' | grep -Eo "\-p [0-9]{1,10}:[0-9]{1,10}" | tr '\n' ' ')"
     para_i="$(get_docker_info $XIAOYA_NAME | awk '{print $2}'):$tag"
@@ -654,6 +656,9 @@ update_xiaoya() {
         docker stop "$XIAOYA_NAME"
         docker rm -v "$XIAOYA_NAME"
         eval "$(echo docker run -d "$para_n" "$para_v" "$para_p" "$para_e" --restart=always --name="$XIAOYA_NAME" "$para_i")"
+        if [ "$mode"x = "bridge"x ] && docker network ls --filter name=only_for_emby --quiet | grep -q . ; then
+            docker network connect only_for_emby "$XIAOYA_NAME"
+        fi
     else
         docker restart "$XIAOYA_NAME"
     fi
