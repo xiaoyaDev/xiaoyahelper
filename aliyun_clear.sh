@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505240847"
+ver="202505242042"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -453,7 +453,6 @@ init_para() {
 
 clear_aliyun_realtime() {
     xiaoya_name="$(echo "$XIAOYA_NAME" | tr '-' '_')"
-    #eval "_file_count_new_$xiaoya_name=$(docker logs $XIAOYA_NAME 2>&1 | grep https | grep security-token | wc -l)"
     eval "_file_count_new_$xiaoya_name=$(docker logs $XIAOYA_NAME 2>&1 | wc -l)"
     eval "_file_count_new=\"\$_file_count_new_$xiaoya_name\""
     eval "_file_count_old=\"\$_file_count_old_$xiaoya_name\""
@@ -463,9 +462,30 @@ clear_aliyun_realtime() {
     eval "_file_count_old_$xiaoya_name=\"\$_file_count_new_$xiaoya_name\""
 }
 
+push_xiaoya_log() {
+    xiaoya_name="$(echo "$XIAOYA_NAME" | tr '-' '_')"
+    eval "current_time_$xiaoya_name=$(date +%Y-%m-%dT%H:%M:%S)"
+    eval "current_time=\"\$current_time_$xiaoya_name\""
+    eval "last_time=\"\$last_time_$xiaoya_name\""
+    if [ -z "$last_time" ]; then
+        last_time=$current_time;
+    fi
+
+    logs=$(docker logs --since "$last_time" "$xiaoya_name" 2>&1 | sed 's|&|^|g')
+
+    if [ -n "$logs" ]; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] $xiaoya_name 新增日志，请确认是否被盗用:" >&6
+        echo "$logs" >&6 
+        echo "----------------------------------------" >&6
+    fi
+    
+    eval "last_time_$xiaoya_name=$current_time"
+}
+
 clear_aliyun_single_docker() {
     init_para "$1"
     copy_tvbox_files
+    push_xiaoya_log
     case "$run_mode" in
     0)
         for time in $(echo "$run_time" | tr ',' ' '); do
