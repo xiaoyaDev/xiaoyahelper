@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505242042"
+ver="202505242231"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -471,21 +471,21 @@ push_xiaoya_log() {
         last_time=$current_time;
     fi
 
-    logs=$(docker logs --since "$last_time" "$xiaoya_name" 2>&1 | sed 's|&|^|g')
+    logs=$(docker logs --since "$last_time" "$xiaoya_name" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | sed 's|\(https\?://[^/]*\).*|\1/......|g')
 
     if [ -n "$logs" ]; then
+        echo "" >&6
         echo "[$(date +'%Y-%m-%d %H:%M:%S')] $xiaoya_name 新增日志，请确认是否被盗用:" >&6
-        echo "$logs" >&6 
+        echo "$logs" >&6
         echo "----------------------------------------" >&6
     fi
-    
+        
     eval "last_time_$xiaoya_name=$current_time"
 }
 
 clear_aliyun_single_docker() {
     init_para "$1"
     copy_tvbox_files
-    push_xiaoya_log
     case "$run_mode" in
     0)
         for time in $(echo "$run_time" | tr ',' ' '); do
@@ -516,6 +516,7 @@ clear_aliyun_single_docker() {
         return 1
         ;;
     esac
+    push_xiaoya_log
 }
 
 clear_aliyun_all_docker_pre_update() {
