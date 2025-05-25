@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505242231"
+ver="202505251707"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -462,6 +462,72 @@ clear_aliyun_realtime() {
     eval "_file_count_old_$xiaoya_name=\"\$_file_count_new_$xiaoya_name\""
 }
 
+config_nginx_uri_log_all_docker() {
+    dockers="$(get_Xiaoya)"
+    for line in $(echo -e "$dockers" | sed '/^$/d'); do
+        config_nginx_uri_log_single_docker "$line"
+    done
+}
+
+config_nginx_uri_log_single_docker() {
+    docker exec "$1" bash -c 'config_nginx_uri_log() {
+    NEW_CONFIG="
+map \$request_uri \$log_d_uri {
+    ~^/d/ 1;
+    default 0;
+}
+log_format d_uri_log '"'\\\$time_iso8601 \\\$remote_addr \\\$request_uri'"';
+access_log /var/log/nginx/d_uri.log d_uri_log if=\$log_d_uri;
+"
+    # 配置文件路径
+    CONFIG_FILE="/etc/nginx/http.d/default.conf" 
+
+    # 临时文件
+    TMP_FILE=$(mktemp)
+
+    # 检查文件是否存在
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "Error: Nginx configuration file not found at $CONFIG_FILE"
+        return
+    fi
+
+    # 处理文件
+    awk -v new_config="$NEW_CONFIG" "
+    BEGIN {
+        print
+        # 立即插入新配置
+        printf(\"%s\",new_config)
+    }
+
+    # 在目标块中检查现有的map块
+    /map \\\$request_uri \\\$log_d_uri/ {
+        # 跳过现有的块（不打印）
+        while (getline > 0) {
+            if (/}[[:space:]]*$/) {
+                break
+            }
+        }
+        next
+    }
+
+    #跳过现有的d_uri_log
+    /d_uri_log/ {
+        next
+    }
+
+    # 其他情况直接打印
+    {
+        print
+    }
+    " "$CONFIG_FILE" | sed "/^[[:space:]]*\$/N; /^\n\$/D" > "$TMP_FILE"
+
+    mv -f "$TMP_FILE" "$CONFIG_FILE"
+
+    nginx -s reload
+}
+config_nginx_uri_log'
+}
+
 push_xiaoya_log() {
     xiaoya_name="$(echo "$XIAOYA_NAME" | tr '-' '_')"
     eval "current_time_$xiaoya_name=$(date +%Y-%m-%dT%H:%M:%S)"
@@ -471,11 +537,23 @@ push_xiaoya_log() {
         last_time=$current_time;
     fi
 
-    logs=$(docker logs --since "$last_time" "$xiaoya_name" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | sed 's|\(https\?://[^/]*\).*|\1/......|g')
+    if docker exec "$XIAOYA_NAME" sh -c '[ -f /var/log/nginx/d_uri.log ]' ; then
+        logs=$(docker exec "$XIAOYA_NAME" cat /var/log/nginx/d_uri.log | while read -r line; do printf '%b\n' "${line//%/\\x}"; done | grep "/d/" | sed 's|/d/||g')
+        if [ -n "$logs" ]; then
+            echo "" >&6
+            echo "----------------------------------------" >&6
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')][$xiaoya_name]文件直链访问列表如下，请关注是否被盗用（如果确认属于自用则不用理会）：" >&6
+            echo "$logs" >&6
+            echo "----------------------------------------" >&6
+            docker exec "$XIAOYA_NAME" sh -c "echo >/var/log/nginx/d_uri.log"
+        fi
+    fi
 
+    logs=$(docker logs --since "$last_time" "$xiaoya_name" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | sed 's|\(https\?://[^/]*\).*|\1/......|g')
     if [ -n "$logs" ]; then
         echo "" >&6
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] $xiaoya_name 新增日志，请确认是否被盗用:" >&6
+        echo "----------------------------------------" >&6
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')][$xiaoya_name]日志如下:" >&6 
         echo "$logs" >&6
         echo "----------------------------------------" >&6
     fi
@@ -493,6 +571,7 @@ clear_aliyun_single_docker() {
                 clear_aliyun
                 aliyun_update_checkin
                 eval "$post_cmd"
+                config_nginx_uri_log "$XIAOYA_NAME"
                 sche=1
             fi
         done
@@ -504,6 +583,7 @@ clear_aliyun_single_docker() {
                 clear_aliyun
                 aliyun_update_checkin
                 eval "$post_cmd"
+                config_nginx_uri_log "$XIAOYA_NAME"
                 sche=1
             fi
         done
@@ -948,6 +1028,7 @@ if [ ! -f /docker-entrypoint.sh ]; then
 fi
 
 start_push_proc
+config_nginx_uri_log_all_docker
 case "$run_mode" in
 0 | 55)
     myecho -e "\n[$(date '+%Y/%m/%d %H:%M:%S')]小雅缓存清理(ver=$ver)运行中"
