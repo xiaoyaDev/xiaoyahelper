@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505251707"
+ver="202505252118"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -462,15 +462,22 @@ clear_aliyun_realtime() {
     eval "_file_count_old_$xiaoya_name=\"\$_file_count_new_$xiaoya_name\""
 }
 
-config_nginx_uri_log_all_docker() {
-    dockers="$(get_Xiaoya)"
-    for line in $(echo -e "$dockers" | sed '/^$/d'); do
-        config_nginx_uri_log_single_docker "$line"
-    done
-}
+config_nginx_uri_log() {
+    if docker exec "$XIAOYA_NAME" sh -c '[ ! -f /etc/nginx/http.d/default.conf ]' ; then
+        return
+    fi
 
-config_nginx_uri_log_single_docker() {
-    docker exec "$1" bash -c 'config_nginx_uri_log() {
+    xiaoya_name="$(echo "$XIAOYA_NAME" | tr '-' '_')"
+    eval "current_md5_$xiaoya_name=$(docker exec "$XIAOYA_NAME" cat /etc/nginx/http.d/default.conf | md5sum | awk '{print $1}')"
+    eval "current_md5=\"\$current_md5_$xiaoya_name\""
+    eval "last_md5=\"\$last_md5_$xiaoya_name\""
+    if [ "$current_md5"x == "$last_md5"x ]; then
+        return
+    fi
+
+    echo "配置nginx记录直链日志"
+
+    docker exec "$XIAOYA_NAME" bash -c 'config_nginx_uri_log() {
     NEW_CONFIG="
 map \$request_uri \$log_d_uri {
     ~^/d/ 1;
@@ -526,6 +533,8 @@ access_log /var/log/nginx/d_uri.log d_uri_log if=\$log_d_uri;
     nginx -s reload
 }
 config_nginx_uri_log'
+
+    eval "last_md5_$xiaoya_name=$(docker exec "$XIAOYA_NAME" cat /etc/nginx/http.d/default.conf | md5sum | awk '{print $1}')"
 }
 
 push_xiaoya_log() {
@@ -564,6 +573,7 @@ push_xiaoya_log() {
 clear_aliyun_single_docker() {
     init_para "$1"
     copy_tvbox_files
+    config_nginx_uri_log
     case "$run_mode" in
     0)
         for time in $(echo "$run_time" | tr ',' ' '); do
@@ -571,7 +581,6 @@ clear_aliyun_single_docker() {
                 clear_aliyun
                 aliyun_update_checkin
                 eval "$post_cmd"
-                config_nginx_uri_log "$XIAOYA_NAME"
                 sche=1
             fi
         done
@@ -583,7 +592,6 @@ clear_aliyun_single_docker() {
                 clear_aliyun
                 aliyun_update_checkin
                 eval "$post_cmd"
-                config_nginx_uri_log "$XIAOYA_NAME"
                 sche=1
             fi
         done
@@ -1028,7 +1036,6 @@ if [ ! -f /docker-entrypoint.sh ]; then
 fi
 
 start_push_proc
-config_nginx_uri_log_all_docker
 case "$run_mode" in
 0 | 55)
     myecho -e "\n[$(date '+%Y/%m/%d %H:%M:%S')]小雅缓存清理(ver=$ver)运行中"
