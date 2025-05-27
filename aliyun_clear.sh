@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505252118"
+ver="202505270813"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -270,6 +270,13 @@ get_docker_info() {
         id=$(docker inspect --format='{{.Image}}' $line | awk -F: '{print $2}')
         echo "$line $(echo "$images" | grep $id | head -n 1)" | tr ':' ' ' | awk '{printf("%s %s %s\n",$1,$2,$5)}'
     done
+}
+
+is_xiaoya() {
+    if get_docker_info | grep "xiaoyaliu/alist" | awk '{print $1}' | grep -q "$1"; then
+        return 0
+    fi
+    return 1
 }
 
 get_Xiaoya() {
@@ -558,11 +565,11 @@ push_xiaoya_log() {
         fi
     fi
 
-    logs=$(docker logs --since "$last_time" "$xiaoya_name" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | sed 's|\(https\?://[^/]*\).*|\1/......|g')
-    if [ -n "$logs" ]; then
+    logs=$(docker logs --since "$last_time" "$XIAOYA_NAME" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | sed 's|\(https\?://[^/]*\).*|\1/......|g')
+    if [ -n "$logs" ] && is_xiaoya "$XIAOYA_NAME"; then
         echo "" >&6
         echo "----------------------------------------" >&6
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')][$xiaoya_name]日志如下:" >&6 
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')][$XIAOYA_NAME]日志如下:" >&6 
         echo "$logs" >&6
         echo "----------------------------------------" >&6
     fi
