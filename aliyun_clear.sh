@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505270813"
+ver="202505271509"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -545,6 +545,9 @@ config_nginx_uri_log'
 }
 
 push_xiaoya_log() {
+    if docker exec "$XIAOYA_NAME" sh -c '[ -f /data/notglog.txt ]' ; then
+        return
+    fi
     xiaoya_name="$(echo "$XIAOYA_NAME" | tr '-' '_')"
     eval "current_time_$xiaoya_name=$(date +%Y-%m-%dT%H:%M:%S)"
     eval "current_time=\"\$current_time_$xiaoya_name\""
@@ -558,14 +561,14 @@ push_xiaoya_log() {
         if [ -n "$logs" ]; then
             echo "" >&6
             echo "----------------------------------------" >&6
-            echo "[$(date +'%Y-%m-%d %H:%M:%S')][$xiaoya_name]文件直链访问列表如下，请关注是否被盗用（如果确认属于自用则不用理会）：" >&6
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')]["$XIAOYA_NAME"]文件直链访问列表如下，请关注是否被盗用（如果确认是自用则不必理会）：" >&6
             echo "$logs" >&6
             echo "----------------------------------------" >&6
             docker exec "$XIAOYA_NAME" sh -c "echo >/var/log/nginx/d_uri.log"
         fi
     fi
 
-    logs=$(docker logs --since "$last_time" "$XIAOYA_NAME" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | sed 's|\(https\?://[^/]*\).*|\1/......|g')
+    logs=$(docker logs --since "$last_time" "$XIAOYA_NAME" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | grep -v "定时" | grep -v "清空" | grep -v "object not found" | sed 's|\(https\?://[^/]*\).*|\1/......|g')
     if [ -n "$logs" ] && is_xiaoya "$XIAOYA_NAME"; then
         echo "" >&6
         echo "----------------------------------------" >&6
