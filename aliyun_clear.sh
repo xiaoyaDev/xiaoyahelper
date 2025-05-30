@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505291857"
+ver="202505300707"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -549,7 +549,7 @@ push_xiaoya_log() {
         return
     fi
     xiaoya_name="$(echo "$XIAOYA_NAME" | tr '-' '_')"
-    eval "current_time_$xiaoya_name=$(docker exec "$XIAOYA_NAME" date +%Y-%m-%dT%H:%M:%S)"
+    eval "current_time_$xiaoya_name=$(date +%Y-%m-%dT%H:%M:%S)"
     eval "current_time=\"\$current_time_$xiaoya_name\""
     eval "last_time=\"\$last_time_$xiaoya_name\""
     if [ -z "$last_time" ]; then
