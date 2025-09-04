@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202505300707"
+ver="202509040927"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -568,7 +568,7 @@ push_xiaoya_log() {
         fi
     fi
 
-    logs=$(docker logs --since "$last_time" "$XIAOYA_NAME" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | grep -v "定时" | grep -v "清空" | grep -v "object not found" | sed 's|\(https\?://[^/]*\).*|\1/......|g')
+    logs=$(docker logs --since "$last_time" "$XIAOYA_NAME" | sed -r 's/\x1b\[[0-9;]*[mGK]//g' | grep -v "定时" | grep -v "清空" | grep -v "object not found" | grep -v "保存夸克" | sed 's|\(https\?://[^/]*\).*|\1/......|g')
     if [ -n "$logs" ] && is_xiaoya "$XIAOYA_NAME"; then
         echo "" >&6
         echo "----------------------------------------" >&6
