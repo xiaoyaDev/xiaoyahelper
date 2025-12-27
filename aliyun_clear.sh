@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver="202509040927"
+ver="202512171643"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
 upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
@@ -446,6 +446,8 @@ init_para() {
 
     folder_type=$(read_File "folder_type.txt")
 
+    cust_docker_server=$(read_File "mydocker.txt")
+
     _file_time="$(retry_command "read_File myruntime.txt" | grep -Eo "[0-9]{2}:[0-9]{2}" | tr '\n' ' ')"
 
     chat_id="$(retry_command "read_File mychatid.txt")"
@@ -721,7 +723,7 @@ copy_tvbox_files'
 
 docker_pull() {
     repo_tag="$1"
-    mirrors="$(curl --insecure -fsSL https://ddsrem.com/xiaoya/all_in_one.sh | awk '/mirrors=\(/,/\)/' | sed -n 's/^[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' | grep -v "docker\.io" | grep -v "hub\.rat\.dev" | grep -v "docker\.1ms\.run")"
+    mirrors="$(curl --insecure -fsSL https://ddsrem.com/xiaoya/all_in_one.sh | awk '/mirrors=\(/,/\)/' | sed -n 's/^[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p')"
     mirrors="$(
         for line in $mirrors; do
             curl -s -o /dev/null -m 4 -w '%{time_total} '$line'\n' --head --request GET "$line" &
@@ -729,13 +731,13 @@ docker_pull() {
         wait
     )"
     mirrors="$(echo "$mirrors" | sort -n | awk '{print $2}')"
-    mirrors="$(docker exec "$XIAOYA_NAME" cat /data/mydocker.txt 2>/dev/null; echo "$mirrors")"
+    mirrors="$(echo "$cust_docker_server"; echo "$mirrors")"
     repo="$(echo "$repo_tag" | awk -F: '{print $1}')"
     tag="$(echo "$repo_tag" | awk -F: '{print $2}')"
     old_image_id="$(docker images | grep "$repo" | grep "$tag" | grep -Eo "[0-9a-f]{6,128}")"
     for mirror in $mirrors; do
         echo "尝试使用镜像源拉取：$mirror/$repo_tag"
-        docker tag "$repo_tag" "$mirror/$para_i" > /dev/null 2>&1
+        docker tag "$repo_tag" "$mirror/$repo_tag" > /dev/null 2>&1
         docker rmi "$repo_tag" > /dev/null 2>&1
         docker pull "$mirror/$repo_tag"
         res=$?
