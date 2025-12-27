@@ -729,6 +729,7 @@ docker_pull() {
         wait
     )"
     mirrors="$(echo "$mirrors" | sort -n | awk '{print $2}')"
+    mirrors="$(docker exec "$XIAOYA_NAME" cat /data/mydocker.txt 2>/dev/null; echo "$mirrors")"
     repo="$(echo "$repo_tag" | awk -F: '{print $1}')"
     tag="$(echo "$repo_tag" | awk -F: '{print $2}')"
     old_image_id="$(docker images | grep "$repo" | grep "$tag" | grep -Eo "[0-9a-f]{6,128}")"
