@@ -725,10 +725,14 @@ docker_pull() {
     repo_tag="$1"
     mirrors="$(curl --insecure -fsSL https://ddsrem.com/xiaoya/all_in_one.sh | awk '/mirrors=\(/,/\)/' | sed -n 's/^[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p')"
     mirrors="$(
+        mirror_pids=""
         for line in $mirrors; do
             curl -s -o /dev/null -m 4 -w '%{time_total} '$line'\n' --head --request GET "$line" &
+            mirror_pids="$mirror_pids $!"
         done
-        wait
+        for mirror_pid in $mirror_pids; do
+            wait "$mirror_pid"
+        done
     )"
     mirrors="$(echo "$mirrors" | sort -n | awk '{print $2}')"
     mirrors="$(echo "$cust_docker_server"; echo "$mirrors")"
