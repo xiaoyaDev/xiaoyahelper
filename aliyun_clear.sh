@@ -1,9 +1,9 @@
 #!/bin/bash
 
-ver="202512171643"
+ver="202607301821"
 
 upgrade_url="https://xiaoyahelper.ddsrem.com/aliyun_clear.sh"
-upgrade_url_backup="http://xiaoyahelper.zngle.cf/aliyun_clear.sh"
+upgrade_url_backup="http://xiaoyahelper.zngle.us.ci/aliyun_clear.sh"
 tg_push_api_url="https://xiaoyapush.ddsrem.com"
 
 hash_function() {
