@@ -725,10 +725,14 @@ docker_pull() {
     repo_tag="$1"
     mirrors="$(curl --insecure -fsSL https://ddsrem.com/xiaoya/all_in_one.sh | awk '/mirrors=\(/,/\)/' | sed -n 's/^[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p')"
     mirrors="$(
+        pids=""
         for line in $mirrors; do
             curl -s -o /dev/null -m 4 -w '%{time_total} '$line'\n' --head --request GET "$line" &
+            pids="$pids $!"  # 记录上一个后台进程的 PID
         done
-        wait
+        for pid in $pids; do
+            wait $pid 2>/dev/null # 逐个等待，即使已经结束也不报错
+        done
     )"
     mirrors="$(echo "$mirrors" | sort -n | awk '{print $2}')"
     mirrors="$(echo "$cust_docker_server"; echo "$mirrors")"
