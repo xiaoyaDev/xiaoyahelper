@@ -384,9 +384,53 @@ aliyun_update_checkin_single() {
     done
 }
 
+refresh_myopentoken() {
+    local _rt _res _new _line _url _cid _csec _body
+    _rt="$(read_File myopentoken.txt | sed '/^$/d' | head -n1 | tr -d '\r')"
+    if [ -z "$_rt" ]; then
+        echo "myopentoken.txt 不存在或为空，跳过长 token 刷新"
+        return 1
+    fi
+    _line="$(read_File open_api.txt | sed '/^$/d' | head -n1 | tr -d '\r')"
+    _url="$(echo "$_line" | awk '{print $1}')"
+    _cid="$(echo "$_line" | awk '{print $2}')"
+    _csec="$(echo "$_line" | awk '{print $3}')"
+    if [ -z "$_url" ]; then
+        _url="$(read_File opentoken_url.txt | sed '/^$/d' | head -n1 | tr -d '\r')"
+    fi
+    if [ -z "$_url" ]; then
+        _url="https://openapi.alipan.com/oauth/access_token"
+    fi
+    if [ -z "$_cid" ] || [ -z "$_csec" ]; then
+        echo "open_api.txt 缺少 client_id/client_secret，跳过长 token 刷新"
+        return 1
+    fi
+    _body=$(printf '{"grant_type":"refresh_token","refresh_token":"%s","client_id":"%s","client_secret":"%s"}' $_rt $_cid $_csec)
+    _res=$(curl --connect-timeout 10 -m 20 -s -X POST -H "Content-Type: application/json" -d "$_body" "$_url")
+    _new=$(echo "$_res" | tr ',' '\n' | grep refresh_token | head -n1 | cut -d: -f2)
+    _new="${_new#\"}"
+    _new="${_new%\"}"
+    if [ -z "$_new" ]; then
+        echo "长 token 刷新失败: $(echo "$_res" | head -c 300)"
+        return 1
+    fi
+    if [ "$_new"x = "$_rt"x ]; then
+        echo "长 token 无需刷新"
+        return 0
+    fi
+    echo "$_new" | docker exec -i "$XIAOYA_NAME" sh -c 'cat > /data/myopentoken.txt'
+    if [ $? -eq 0 ]; then
+        echo "长 token 已刷新"
+        return 0
+    fi
+    echo "长 token 写入失败"
+    return 1
+}
+
 aliyun_update_checkin() {
     aliyun_update_checkin_single "mycheckintoken.txt"
     aliyun_update_checkin_single "mytoken.txt"
+    refresh_myopentoken
 }
 
 _clear_aliyun() {
